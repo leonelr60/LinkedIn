@@ -1,0 +1,367 @@
+﻿@page
+@model ChurchesModel
+@{
+    ViewData["Title"] = "Churches";
+    @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env
+    @inject Data.ApplicationDbContext _appContext
+    @inject IJSRuntime jsRuntime
+
+    string oUser = "";
+    string sIdBranch = "";
+    string sIdInternalRole = "";
+    int NParamPackages = 0;
+    int NParamMeals = 0;
+    try
+    {
+        oUser = _appContext._httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Name).Value;
+        Model.sUser = oUser;
+        using (var context = new Data.SQLContext())
+        {
+            var conn = context.Database.GetDbConnection();
+            conn.Open();
+            var command = conn.CreateCommand();
+
+            string query = "SELECT id_branch, id_internal_role FROM branches_roles  WHERE email_member = '" + oUser + "'";
+            command.CommandText = query;
+            var reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                sIdBranch = reader.GetValue("id_branch").ToString();
+                Model.sBranch = sIdBranch;
+                sIdInternalRole = reader.GetValue("id_internal_role").ToString();
+            }
+            command = conn.CreateCommand();
+            query = "SELECT int_param FROM feedp_parameters WHERE id_branch = " + sIdBranch + " AND id_param = 'PACKAGESXBOX'";
+            command.CommandText = query;
+            reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                NParamPackages = int.Parse(reader.GetValue("int_param").ToString());
+
+            }
+            command = conn.CreateCommand();
+            query = "SELECT int_param FROM feedp_parameters WHERE id_branch = " + sIdBranch + " AND id_param = 'MEALSXPACKAGE'";
+            command.CommandText = query;
+            reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                NParamMeals = int.Parse(reader.GetValue("int_param").ToString());
+
+            }
+            
+conn.Close();
+if (sIdBranch.Length <= 0)
+{
+var contextnav = new Microsoft.AspNetCore.Http.HttpContextAccessor();
+contextnav.HttpContext.Response.Redirect("/Index", true);
+}
+
+}
+}
+catch (Exception ex)
+{
+string sError = ex.Message;
+
+}
+}
+<h1>Churches</h1>
+<hr />
+<form method="post" >
+    <label class="col-form-label">Find</label>
+    <input class="form-control" inputmode="text" asp-for="CodChurch" list="churchesname" />
+    <datalist id="churchesname">
+        @{
+            using (var context = new Data.SQLContext())
+            {
+                var conn = context.Database.GetDbConnection();
+                conn.Open();
+                var command = conn.CreateCommand();
+
+                string query = "SELECT id_church, txt_church, txt_pastor FROM feedp_churches where id_branch = 0"+ sIdBranch;
+                command.CommandText = query;
+                var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                <option value="@reader.GetValue("id_church").ToString()">@reader.GetValue("txt_church").ToString() - @reader.GetValue("txt_pastor").ToString()</option>
+
+                }
+
+                conn.Close();
+
+            }
+
+        }
+
+    </datalist>
+    <input type="submit" class="btn btn-primary" value="Edit" name="btnFind"/> 
+
+</form>
+<form method="post">
+    <label class="col-form-label">Church Internal Code</label>
+    <input class="form-control" inputmode="numeric" asp-for="CodChurch" readonly />
+    <label class="col-form-label">Name of the Church</label>
+    <input class="form-control" asp-for="NameChurch" />
+    <label class="col-form-label">Name of the Pastor</label>
+    <input class="form-control" asp-for="PastorName" />
+    <label class="col-form-label">Country</label>
+    <select class="form-control" asp-for="iCountry" onchange="document.getElementById('submitbtn').click();">
+        <option value="0" selected>---------</option>
+        @{
+
+            using (var context = new Data.SQLContext())
+            {
+                var conn = context.Database.GetDbConnection();
+                conn.Open();
+                var command = conn.CreateCommand();
+
+                string query = "SELECT id_country, txt_country FROM feedp_countries ";
+                command.CommandText = query;
+                var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    <option value="@reader.GetValue("id_country").ToString()">@reader.GetValue("txt_country").ToString()</option>
+
+                }
+
+                conn.Close();
+
+            }
+
+        }
+    </select>
+    <label class="col-form-label">Department</label>
+    <select class="form-control" asp-for="iState" onchange="document.getElementById('submitbtn').click();">
+        <option value="0" selected>---------</option>
+        @{
+
+            string sCountry = Model.iCountry;
+
+            if (sCountry is null)
+            {
+                sCountry = "";
+            }
+            using (var context = new Data.SQLContext())
+            {
+                var conn = context.Database.GetDbConnection();
+                conn.Open();
+                var command = conn.CreateCommand();
+
+                string query = "SELECT id_state, txt_state FROM feedp_state where id_country = 0" + sCountry.ToString();
+                command.CommandText = query;
+                var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+
+                    <option value="@reader.GetValue("id_state").ToString()">@reader.GetValue("txt_state").ToString()</option>
+
+
+
+                }
+
+                conn.Close();
+
+            }
+
+        }
+    </select>
+    @*<label class="col-form-label">City</label>
+        <select class="form-control" asp-for="iCity" >
+            <option value="0">---------</option>
+            @{
+
+                string sCountryc = Model.iCountry;
+                string sStatec = Model.iState;
+                if (sCountryc is null)
+                {
+                    sCountryc = "";
+                }
+                if (sStatec is null)
+                {
+                    sStatec = "";
+                }
+                using (var context = new Data.SQLContext())
+                {
+                    var conn = context.Database.GetDbConnection();
+                    conn.Open();
+                    var command = conn.CreateCommand();
+                    string query = "SELECT id_city, txt_city FROM feedp_city where id_country = 0" + sCountryc.ToString() + " AND id_state = 0" + sStatec.ToString();
+                    command.CommandText = query;
+                    var reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                            <option value="@reader.GetValue("id_city").ToString()">@reader.GetValue("txt_city").ToString()</option>
+
+
+                    }
+
+                    conn.Close();
+
+                }
+
+            }
+        </select>*@
+    <input type="submit" id="submitbtn" name="submitbtn" value=">>" style="visibility:hidden;display:none;" />
+
+    <label class="col-form-label">Address</label>
+    <input class="form-control" asp-for="CAddress" />
+    <label class="col-form-label">Phone</label>
+    <input class="form-control" asp-for="CPhone" />
+    <label class="col-form-label">Notes</label>
+    <input class="form-control" asp-for="CNotes" />
+    <label class="col-form-label">Active?</label>
+    <input type="checkbox" class="custom-checkbox" asp-for="CActive" checked />
+    <hr />
+    <label class="col-form-label">Number of meals per week</label>
+    <input class="form-control" asp-for="NFed" />
+    <label class="col-form-label">Days and Time</label>
+    <table>
+        <tr>
+            <td>
+                <p>Monday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bMonday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TMonday" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Tuesday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bTuesday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TTuesday" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Wednesday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bWednesday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TWednesday" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Thursday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bThursday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TThursday" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Friday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bFriday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TFriday" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Saturday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bSaturday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TSaturday" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <p>Sunday</p>
+
+            </td>
+            <td>
+                <input type="checkbox" class="custom-checkbox" asp-for="bSunday" />
+            </td>
+            <td>
+                <input class="form-control" type="time" asp-for="TSunday" />
+            </td>
+        </tr>
+    </table>
+    <label class="col-form-label">Last Visit</label>
+    <input type="date" class="form-control" asp-for="DLastVisit" />
+    <label class="col-form-label">Number of Cases</label>
+    <input class="form-control" asp-for="NCases" />
+    <input type="submit" class="btn btn-primary" value="Calculate" name="BtnCalculate" />
+    <br />
+    <label class="col-form-label">Projected Meals per Month</label>
+    @{
+        var iMealsProj = @Model.NFed * 4;
+        <input class="form-control" value="@iMealsProj" />
+    }
+    <label class="col-form-label">Projected Months to Cover</label>
+    @{
+        if (iMealsProj == 0)
+        {
+            <input class="form-control" value="0" />
+        }
+        else
+        {
+            double IMonthsProj = ((NParamMeals * NParamPackages) * @Model.NCases) / iMealsProj;
+            IMonthsProj = Math.Round(IMonthsProj, 2);
+            <input class="form-control" value="@IMonthsProj" />
+        }
+
+    }
+    <label class="col-form-label">Estimated Date Covered</label>
+    @{
+        if (iMealsProj == 0)
+        {
+            <input class="form-control" value="" />
+        }
+        else
+        {
+            double IMonthsProj = ((NParamMeals * NParamPackages) * @Model.NCases) / iMealsProj;
+            IMonthsProj = Math.Round(IMonthsProj, 2);
+            int iMonths = int.Parse(IMonthsProj.ToString());
+            DateTime dProjected = Model.DLastVisit.AddMonths(iMonths);
+            <input class="form-control" value="@dProjected" readonly />
+        }
+
+    }
+    <hr />
+    <input type="submit" class="btn btn-primary" value="Save" name="BtnSave" />
+</form>
+@if (Model.SError != null)
+{
+    if (Model.SError.Length > 0)
+    {
+        <script type="text/javascript">
+            window.onload = function () {
+                alert("@Model.SError");
+            };
+        </script>
+    }
+}
+
+@functions{ 
+    public void FindRecord()
+    {
+        Model.CodChurch = "Diff";
+    }
+}

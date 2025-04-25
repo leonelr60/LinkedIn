@@ -1,0 +1,141 @@
+﻿@page "/gmemberprofile/{id_church}/{email_member}"
+@{
+    @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env
+    @inject Data.ApplicationDbContext _appContext
+
+    string oUser = "";
+    try
+    {
+        oUser = _appContext._httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.Name).Value;
+
+    }
+    catch (Exception ex)
+    {
+        string sError = ex.Message;
+    }
+
+}
+
+<AuthorizeView>
+    <Authorized>
+        <div class="header-primary-title-div">
+            <h1 class="header-primary-title-color">Member Profile</h1>
+        </div>
+        
+        <hr />
+        <div style="text-align:right;">
+            @using (var context = new Data.SQLContext())
+            {
+                var conn = context.Database.GetDbConnection();
+                conn.Open();
+                var command = conn.CreateCommand();
+
+                string query = "SELECT id_church FROM ochurch_roles  WHERE email_member = '" + oUser + "' AND (yn_admin = -1 OR yn_staff = -1 OR yn_leader = -1)";
+                command.CommandText = query;
+                var reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    <a class="btn btn-primary" href="AddMember/@email_member">
+                        <span class="oi oi-arrow-right" aria-hidden="true"></span> Assign
+                    </a>
+                    <a class="btn btn-primary" href="EditMember/@email_member">
+                        <span class="oi oi-plus" aria-hidden="true"></span> Edit
+                    </a>
+                    
+                    <a class="btn btn-primary" href="Disciple/@id_church/@email_member">
+                        <span class="oi oi-badge" aria-hidden="true"></span> Disciple
+                    </a>
+                    <a class="btn btn-primary" href="Student/@id_church/@email_member">
+                        <span class="oi oi-pencil" aria-hidden="true"></span> Student
+                    </a>
+                    <a class="btn btn-primary" href="Assylum/@id_church/@email_member">
+                        <span class="oi oi-briefcase" aria-hidden="true"></span> Assylum
+                    </a>
+                }
+                conn.Close();
+
+            }
+
+        </div>
+        <br />
+
+        @using (var context = new Data.SQLContext())
+        {
+            var conn = context.Database.GetDbConnection();
+            conn.Open();
+            var command = conn.CreateCommand();
+            string query = "SELECT om.*, m.*, CONVERT(VARCHAR(20),om.birth_date,102) birthdate FROM ochurch_members om INNER JOIN ochurch_members_adic m ON m.email_member = om.email_member WHERE om.id_church = " + @id_church + " AND m.email_member = '" + @email_member + "' ORDER BY om.txt_lastname ASC, om.txt_firstname ASC";
+            command.CommandText = query;
+            var reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                string sImg = "";
+                @if (reader.GetValue("txt_img").ToString().Length <= 1)
+                {
+                    @if (reader.GetValue("yn_male").ToString() == "-1")
+                        sImg = "images/male.png";
+                    else
+                        sImg = "images/female.png";
+                }
+                else
+                {
+                    sImg = @reader.GetValue("txt_img").ToString();
+                }
+                <img src="@sImg" width="200" />
+                <br />
+                <br />
+                <table style="width:100%;">
+                    <tr>
+                        <td><p><b>First Name:</b></p></td>
+                        <td><p>@reader.GetValue("txt_firstname")</p></td>
+                    </tr>
+                    <tr>
+                        <td><p><b>Last Name:</b></p></td>
+                        <td><p>@reader.GetValue("txt_lastname")</p></td>
+                    </tr>
+                    <tr>
+                        <td><p><b>Email:</b></p></td>
+                        <td><p><a href="mailto:@reader.GetValue("email_member")">@reader.GetValue("email_member")</a></p></td>
+                    </tr>
+                    <tr>
+                        <td><p><b>Phone:</b></p></td>
+                        <td><p><a href="tel:@reader.GetValue("txt_phone")">@reader.GetValue("txt_phone")</a></p></td>
+                    </tr>
+                    <tr>
+                        <td><p><b>Birth Date:</b></p></td>
+                        <td><p>@reader.GetValue("birthdate")</p></td>
+                    </tr>
+                    <tr>
+                        <td><p><b>Favorites:</b></p></td>
+                        <td><p>@reader.GetValue("txt_favs")</p></td>
+                    </tr>
+                    <tr>
+                        <td><p><b>Hobbies:</b></p></td>
+                        <td><p>@reader.GetValue("txt_hobbies")</p></td>
+                    </tr>
+
+                </table>
+
+
+
+
+            }
+            conn.Close();
+        }
+
+    </Authorized>
+    <NotAuthorized>
+        <h2>Please Login</h2>
+        <a href="Identity/Account/Login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public string id_church { get; set; }
+    [Parameter]
+    public string email_member { get; set; }
+}
+

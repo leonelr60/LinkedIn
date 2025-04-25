@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4
+.0.0/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.m
+in.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd
+/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstra
+p.min.js"></script>
+<link rel="stylesheet" type="text/css" href="CSS/styles.css" />
+<script type="text/javascript" src="Scripts/notes.js"></script>
+
+<title>Teacher Assistant</title>
+</head>
+<body onload="funcmenuload();" onunload="funcunload();">
+    <div style="width:100%;">
+        <div id="div_back" style="width:60px;position:fixed;top:0;left:0;opacity:1">
+            
+                <a href="index.html" style="color:white;text-decoration:none;font-size:18px;">
+			<div style="border-style:thick;border-radius:20em;background-color:#800000;text-align:center;width:60px;height:60px;vertical-align:central;padding:12px;"><label>&#8249;&#8249;</label></div>
+		</a>
+            
+
+        </div>
+
+        <div id="div_header" style="text-align:center;background-color:dodgerblue;">
+            <img alt="" src="images/logo.jpg" style="width:200px;height:200px;border-radius:1em;padding:10px" width="200px">
+            <h1 style="color:white;text-align:center">Notas</h1>
+            <br />
+        </div>
+        <div id="div_body" style="text-align:center">
+            
+	            <br />
+	            <div style="display:inline-flex;flex-flow: row;display:none;">
+			<div>
+				<label>Año</label>
+				<input type="text" id="idyear" placeholder="Current year"  disabled />
+				
+			</div>
+			<div>
+				<label>Ciclo</label>
+				<div id="divselectcicleobj" style="text-align:left;"></div>
+				
+			</div>
+		    </div>
+		    <div style="display:inline-flex;flex-flow: row;">
+			<div>
+				<label>Grado</label>
+				<div id="divselectobj" style="text-align:left;"></div>
+				
+			</div>
+			<div>
+				<label>Materia</label>
+				<div id="divselectsubobj" style="text-align:left;"></div>
+				
+			</div>
+		    </div>
+		    <div style="display:inline-flex;flex-flow: row;">
+			<div>
+				<label>Estudiante</label>
+				<div id="divselectstudobj" style="text-align:left;"></div>
+				
+			</div>
+		    	<div>
+				<label>Aspecto</label>
+				<div id="divselectaspobj" style="text-align:left;"></div>
+				
+			</div>
+		    </div>	
+		    <div style="display:inline-flex;flex-flow: row;">
+			<div >	    
+				<label>Actividad</label>
+				<div id="divselectactobj" style="text-align:left;"></div>
+				
+			</div>
+			<div >
+				<textarea id="activitydesc" cols="30" rows="3" disabled></textarea>
+		    		
+			</div>
+		    </div>
+		    <div style="display:inline-flex;flex-flow: row;">
+			<div>
+				<label>Fecha</label>
+				<input type="date" id="activitydate" placeholder="Fecha actual" />
+				
+			</div>
+		    	<div>
+				<label>Punteo</label>
+				<input type="number" id="punctuation" placeholder="Ingrese valor numérico" />
+				
+			</div>
+		    </div>
+		    <div style="display:inline-flex;flex-flow: row;">
+			<div>
+				<label>Observaciones</label>
+				<input type="text" id="activityobs" placeholder="Notas u Observaciones" />
+				
+			</div>
+		    </div>
+			<br>
+			<br>
+			<button type="button" onclick="insupddata();">Guardar</button>
+
+	        
+	  
+        </div>
+	<hr>
+	    <div id="elements" style="width:100%;">
+		<table style="width:100%;">
+		    <caption>Notas</caption>
+		    <thead>
+			<tr>
+			    <th>ID</th>
+			    <th>Fecha</th>
+			    <th>Actividad</th>
+			    <th>Punteo</th>
+			    <th> </th>
+			    
+			</tr>
+		    </thead>
+		    <tbody id="elementsList">
+			<tr>
+			    <td colspan="3">No hay datos...</td>
+			</tr>
+		    </tbody>
+		</table>
+	    </div>
+
+    </div>
+</body>
+</html>

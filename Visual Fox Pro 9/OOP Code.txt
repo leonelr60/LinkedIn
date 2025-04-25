@@ -1,0 +1,155 @@
+---------------------MAIN PROCEDURE ------------------------------
+STORE SQLCONNECT('deltagym','delta_app','D3lt44pp*.') TO sqlconexion
+IF sqlconexion>0
+	thisform.timer1.Enabled = .F.
+	SET DATE TO BRITISH  
+	STORE DTOc(DATE()-1) TO sDate
+
+	STORE " 23:59:59" TO sHour
+	STORE .f. TO bProc
+	STORE 0 TO cont_visita
+	STORE 0 TO total_visitas
+	STORE 0 TO ncod_clie
+	sdate = sdate 
+
+	thisform.label1.Caption = "PROCESANDO ACCESOS POR VENCIMIENTO DE MEMBRESIA, POR FAVOR ESPERE..."
+	thisform.edit1.Value = thisform.edit1.Value + chr(13) + TIME(DATE()) + " ****PROCESANDO VENCIMIENTOS DE MEMBRESIAS****"
+	STORE "EXEC desactiva_huellas_vencidas" TO sqlcomando
+	= SQLEXEC(sqlconexion,sqlcomando,"consulta_fp",auser)
+	**DESACTIVA VISITAS VENCIDAS
+	thisform.label1.Caption = "PROCESANDO ACCESOS POR VENCIMIENTO DE VISITAS, POR FAVOR ESPERE..."
+	thisform.edit1.Value = thisform.edit1.Value + chr(13) + TIME(DATE()) + " ****PROCESO DE VENCIMIENTOS DE MEMBRESIAS FINALIZADO****"
+	thisform.edit1.Value = thisform.edit1.Value + chr(13) + TIME(DATE()) + " ****PROCESO DE LOG DE VISITAS****"
+			&&VERIFICA QUE EXISTA LA ASOCIACION A UNA HUELLA DIGITAL
+			SET DATE TO BRITISH 
+			&& Desactiva los que ya hayan consumido sus visitas.
+			STORE "DELETE FROM tmp_fingerprint" TO sqlcomando
+			= SQLEXEC(sqlconexion,sqlcomando,"actualiza_consultafp",auser2)
+			
+			sqlcomando = "select cda.cod_clie, c.txt_nombre, convert(varchar(10),cda.fec_renovacion,112) fec_renovacion, convert(varchar(10),cda.fec_vencimiento,112) fec_vencimiento, m.cnt_visitas "
+			sqlcomando = sqlcomando + " from clientes_datos_adm cda, clientes c, membresias m"
+			sqlcomando = sqlcomando + " where"
+			sqlcomando = sqlcomando + " cda.fec_vencimiento > convert(VARCHAR(10),getdate(),112)					"
+			sqlcomando = sqlcomando + " and cda.cod_empre = c.cod_empre and cda.cod_clie = c.codigo"
+			sqlcomando = sqlcomando + " and c.sn_activa = -1"
+			sqlcomando = sqlcomando + " and m.cod_membresia = cda.cod_membresia"
+			sqlcomando = sqlcomando + " and isnull(m.cnt_visitas,0) > 0 and m.sn_activa = -1"
+			= SQLEXEC(sqlconexion,sqlcomando,"actualiza_consultafp2",auser2)
+			IF auser2(1,2) <= 0
+			ELSE 
+				FOR i = 1 TO auser2(1,2)
+					SELECT actualiza_consultafp2
+					GO i 
+					SCATTER MEMVAR 
+					cont_visita = 0
+					total_visitas = actualiza_consultafp2.cnt_visitas
+					ncod_clie = actualiza_consultafp2.cod_clie
+					sqlcomando = "SELECT fec_visita fecha_visita "
+					sqlcomando = sqlcomando + " FROM hist_visitas "
+					sqlcomando = sqlcomando + " WHERE cod_clie = " + ALLTRIM(STR(actualiza_consultafp2.cod_clie)) + " AND "
+					sqlcomando = sqlcomando + " fec_visita BETWEEN '"+ALLTRIM(actualiza_consultafp2.fec_renovacion)+" 00:00:00' AND '"+ALLTRIM(actualiza_consultafp2.fec_vencimiento)+" 23:59:59'"
+					sqlcomando = sqlcomando + " AND convert(varchar(10),fec_visita,112) < convert(varchar(10),getdate(),112) GROUP BY fec_visita"
+					= SQLEXEC(sqlconexion,sqlcomando,"actualiza_consultafp22",auser3)
+					IF auser3(1,2) <= 0
+					ELSE 
+						FOR j = 1 TO auser3(1,2)
+							SELECT actualiza_consultafp22
+							GO j
+							SCATTER memvar
+							cont_visita  = cont_visita + 1
+						ENDFOR  
+					ENDIF 
+					STORE (total_visitas - cont_visita) TO cntVisitas
+						STORE "INSERT INTO tmp_fingerprint " TO sqlcomando
+						sqlcomando = sqlcomando + "SELECT "+STR(ncod_clie)+",1," + STR(cntVisitas)
+						= SQLEXEC(sqlconexion,sqlcomando,"actualiza_consultafp",auser2)
+						IF auser2(1,2) <= 0
+							thisform.edit1.Value = thisform.edit1.Value + chr(13) + TIME(DATE()) + " ****Error al actualizar deshabilitaci n c digo ["+ALLTRIM(STR(ncod_clie))+"]...****"
+						ENDIF 
+					
+				ENDFOR  
+			ENDIF 
+			thisform.edit1.Value = thisform.edit1.Value + chr(13) + TIME(DATE()) + " ****PROCESO DE LOG DE VISITAS FINALIZADO****"
+			
+			= SQLDISCONNECT(sqlconexion)
+	thisform.label1.Caption = "LISTO..."
+	thisform.timer1.Enabled = .T.
+ELSE
+	thisform.edit1.Value = thisform.edit1.Value + chr(13) + TIME(DATE()) + " ****Error al conectar con Base de Datos Delta Gym (HUELLAS VENCIDAS)****"
+ENDIF 
+
+		&& Desactivo el programa de la huella para actualizarlo pues no refresca los usuarios sino hasta que vuelve a cargarse att.exe
+		#DEFINE WM_CLOSE 0x10
+		DECLARE Long FindWindow IN WIN32API String ClassName, String WindowTitle
+		DECLARE Long SendMessage IN WIN32API Long hWnd, Long Msg, Long wParam, Long lParam
+		Declare Integer FindWindow In win32Api ;
+		String ClassName, ;
+		String WindowTitle && Titulo (caption) de la ventana a buscar
+
+		Declare Integer PostMessage In Win32Api ;
+		Integer hWnd, ;
+		Integer Msg, ;
+		Integer wParam, ;
+		Integer lParam 
+		STORE "" TO mValor 
+		STORE "" TO sProgram
+		STORE 0 TO i
+		mvalor = aTask( "Delta", cMatriz, .T. ,.t.)
+		STORE 0 TO mProcTot
+		mproctot = CAST(mvalor as int)
+		FOR i = 1 TO mproctot
+			sprogram = aTask_Ind( i, cMatriz, .T. ,.t.)
+			IF SUBSTR(UPPER(sprogram),1,22) $ "FINGERPRINT ENROLLMENT"
+				&& Desactivamos el Attendance
+				STORE FindWindow(Null,"Fingerprint Enrollment and Verification Module") TO mHnwd
+				 = SendMessage(mHnwd,WM_CLOSE,0,0)
+				  
+				EXIT for 
+			ENDIF 
+		ENDFOR 
+
+------------ OTHER PROCEDURE ------------------------------
+				sqlcomando = "SELECT sn_desactivado "
+				sqlcomando = sqlcomando + " FROM tmp_fingerprint "
+				sqlcomando = sqlcomando + " WHERE cod_empre = 1 AND cod_clie = " + ALLTRIM(sCod)
+				= SQLEXEC(sqlconexionfp,sqlcomando,"actualiza_consultafp22",auser3)
+				IF auser3(1,2) <= 0
+				ELSE 
+					SELECT actualiza_consultafp22
+					SCATTER MEMVAR 
+					
+    			    thisform.lblEstado3.Caption = "Visitas restantes: " +ALLTRIM(STR(actualiza_consultafp22.sn_desactivado))
+					IF (actualiza_consultafp22.sn_desactivado <= 0)
+						thisform.lblEstado.ForeColor = RGB(128,0,0)
+						thisform.lblEstado2.ForeColor = RGB(128,0,0)
+						thisform.lblEstado3.ForeColor = RGB(128,0,0)
+					  	bVisit = .F.
+					  	bOpenDoor = .F.
+					ELSE
+					  	IF(bisFecVenc = .T.)
+					  		bOpenDoor = .F.
+					  	ENDIF
+					  	
+					ENDIF 
+
+----------------- ANOTHER PROCEDURE --------------------------------
+
+				IF(bOpenDoor = .T.)
+					IF FILE(SYS(2004)+"open_door.bat")
+						STORE SYS(2004)+"open_door.bat" TO mPath
+						RUN /N2 &mPath
+					ENDIF
+					STORE "EXEC usp_monitor_web @cod_clie = " TO sqlcomando
+					STORE sqlcomando+""+ALLTRIM(sCod)+"" TO sqlcomando
+					STORE sqlcomando+", @cod_empre = 1" TO sqlcomando
+					STORE sqlcomando+", @sn_denegado = 0" TO sqlcomando
+					STORE sqlcomando+", @txt_msg = ''" TO sqlcomando
+					= SQLEXEC(sqlconexionfp,sqlcomando,"monitor_query_usp",auser_usp)
+				ELSE
+					STORE "EXEC usp_monitor_web @cod_clie = " TO sqlcomando
+					STORE sqlcomando+""+ALLTRIM(sCod)+"" TO sqlcomando
+					STORE sqlcomando+", @cod_empre = 1" TO sqlcomando
+					STORE sqlcomando+", @sn_denegado = -1" TO sqlcomando
+					STORE sqlcomando+", @txt_msg = 'ACCESS DENIED...'" TO sqlcomando
+					= SQLEXEC(sqlconexionfp,sqlcomando,"monitor_query_usp",auser_usp)
+				ENDIF

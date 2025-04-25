@@ -1,0 +1,222 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using GymMonitor.Services
+@using Microsoft.EntityFrameworkCore
+@using System.Drawing
+@using System.Threading
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env
+@inject NavigationManager NavigationManager
+@inject NotifierService Notifier
+@inject TimerService Timer
+@inject NavigationManager uriHelper;
+
+<PageTitle>Home</PageTitle>
+
+<h5>TIME: @theTime</h5>
+<hr />
+<div class="row">
+    @using (var context = new Data.SQLContext())
+    {
+        sDescError = "";
+        try
+        {
+            var conn = context.Database.GetDbConnection();
+            conn.Open();
+            var command = conn.CreateCommand();
+            string query = "EXEC usp_monitor_web 0,1,0,'WEBMONITOR'";
+            command.CommandText = query;
+            var reader = command.ExecuteReader();
+            var bPic = true;
+            bLogo = true;
+
+            while (reader.Read())
+            {
+                bLogo = false;
+                int iCode = int.Parse(reader.GetValue("CODE").ToString());
+                if (context.sPicClient == "-1")
+                {
+                    bPic = true;
+                }
+                else
+                {
+                    if (last_code == iCode)
+                    {
+                        //Don´t bring picture
+                        bPic = false;
+                    }
+                    else
+                    {
+                        last_code = iCode;
+                        bPic = false;
+                    }
+                }
+                
+                var sName = @reader.GetValue("NAME").ToString();
+                var sFooter = @reader.GetValue("FOOTER").ToString();
+                var sHour = @reader.GetValue("HOUR").ToString();
+                var sMessage = @reader.GetValue("MESSAGE").ToString();
+                var sMessage2 = @reader.GetValue("MESSAGE2").ToString();
+                <div class="col-md-3">
+                    @{
+                        try
+                        {
+                            if (bPic)
+                            {
+                                var command2 = conn.CreateCommand();
+                                query = "select obj_foto obj_foto  from clientes_adic_1_" + iCode.ToString();
+                                query = query + " WHERE cod_clie = " + iCode.ToString();
+                                command2.CommandText = query;
+                                var reader2 = command2.ExecuteReader();
+                                byte[] oImg;
+                                while (reader2.Read())
+                                {
+                                    var vImg = reader2.GetValue("obj_foto");
+                                    byte[] bytes = (byte[])vImg;
+
+                                    //use the byte to generate a base64String and assign to image to get displayed in Grid
+                                    string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
+                                    string imagesrc = "data:image/png;base64," + base64String;
+                                    <div style="align-content:center;align-self:center;width:100%;">
+                                        <div>
+                                            <img src="@imagesrc" style="width:100%" />
+                                        </div>
+                                    </div>
+
+                                }
+                            }
+                            
+                        }
+                        catch (Exception ex2)
+                        {
+                            string sError = ex2.Message;
+                            sDescError = sError;
+                        }
+
+                    }
+                    <a href="">
+                        <h3 class="header-primary-info-color" style="color:black; align-self:center; text-align:center;">@sName</h3>
+                    </a>
+                    <br />
+                    <div style="width:100%; text-align:center;">
+                        @if (sMessage.Contains("THERE WAS A PROBLEM"))
+                        {
+                            <h4 style="color:darkred;">@sMessage</h4>
+                            <br />
+                            <h6 style="color:darkred;">@sMessage2</h6>
+                        }
+                        else
+                        {
+                            <h4 style="color:darkgreen;">@sMessage</h4>
+                            <br />
+                            <h6 style="color:darkgreen;">@sMessage2</h6>
+                        }
+                    </div>
+                    <br />
+                    <p style="text-align:center;">@sFooter <br /> @sHour</p>
+                    <br />
+                    <hr />
+                </div>
+
+            }
+            
+            conn.Close();
+        }
+        catch (Exception ex)
+        {
+            string sError = ex.Message;
+            sDescError = sError;
+        }
+        
+    }
+    
+
+
+ </div>
+ @{if(bLogo)
+     {
+        <h3>WELCOME</h3>
+        <div style="display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      text-align: center;
+                      min-height: 75vh;">
+                    
+                    <img src="/images/logo.jpg" style="max-width:960px;" />
+                    
+                </div>
+     }
+ }
+ <h6>@sDescError</h6>
+<script src="_framework/blazor.server.js"></script>
+
+@code{
+    public string theTime { get; set; } = "";
+    public int last_code { get; set; } = 0;
+    public bool bRunOnce { get; set; } = true;
+    public bool bLogo { get; set; } = true;
+    public string sDescError { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if(bRunOnce)
+        {
+            @using (var context = new Data.SQLContext())
+            {
+                try
+                {
+                    bRunOnce = false;
+                    var conn = context.Database.GetDbConnection();
+                    conn.Open();
+                    var command = conn.CreateCommand();
+                    string query = "delete from tmp_monitor_web WHERE CONVERT(VARCHAR(10),fec_fingerprint,112) < CONVERT(VARCHAR(10),getdate(),112) ";
+                    command.CommandText = query;
+                    var reader = command.ExecuteReader();
+                    conn.Close();
+                }
+                catch (Exception ex)
+                {
+                    string sError = ex.Message;
+                }
+            }
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)//OnInitialized()
+    {
+        var timer = new Timer(new TimerCallback(_ =>
+         {
+             theTime = DateTime.Now.ToLongTimeString();
+             InvokeAsync(() =>
+             {
+                 StateHasChanged();
+
+
+             });
+         }), null, 0000, 1000);
+    }
+
+    
+    /*protected override void OnAfterRender(bool firstRender)
+    {
+        var timer = new Timer(new TimerCallback(_ =>
+         {
+             
+             uriHelper.NavigateTo("/", true);
+             InvokeAsync(() =>
+             {
+                 StateHasChanged();
+
+
+             });
+         }), null, 2000, 2000);
+    }
+    */
+
+    
+}
+
+@functions{
+    
+    
+}
